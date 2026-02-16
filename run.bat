@@ -1,29 +1,33 @@
 @echo off
 chcp 65001 >nul
-title AutoClickerCtS
+title AutoClicker
 
-echo ========================================
-echo    Запуск AutoClickerCtS
-echo ========================================
+echo ================================
+echo    AutoClickerCtS Launcher
+echo ================================
 echo.
 
-:: Проверка наличия виртуального окружения
+:: Check for virtual environment
 if not exist venv\Scripts\activate (
-    echo [1/3] Создание виртуального окружения...
+    echo [1/4] Creating virtual environment...
     python -m venv venv
 )
 
-:: Активация виртуального окружения
-echo [2/3] Активация окружения...
+:: Activate virtual environment
+echo [2/4] Activating environment...
 call venv\Scripts\activate.bat
 
-:: Проверка и установка зависимостей
-echo [3/3] Проверка зависимостей...
-pip install -q -r requirements.txt
+:: Upgrade pip
+echo [3/4] Upgrading pip...
+python -m pip install --upgrade pip
 
-:: Запуск программы
+:: Install dependencies
+echo [4/4] Installing dependencies...
+pip install -r requirements.txt
+
+:: Run the program
 echo.
-echo Запуск программы...
+echo Starting program...
 echo.
 python main.py
 
