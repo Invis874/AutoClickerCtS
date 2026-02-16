@@ -1,65 +1,80 @@
 @echo off
 chcp 65001 >nul
-title Установка Tesseract OCR
+title Tesseract OCR Setup
 
 echo ========================================
-echo    Установка Tesseract OCR для Windows
+echo    Tesseract OCR Setup for Windows
 echo ========================================
 echo.
 
-:: Проверка, установлен ли уже Tesseract
+:: Check if Tesseract is already installed
 where tesseract >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ✅ Tesseract уже установлен!
+    echo [OK] Tesseract already installed!
     tesseract --version
-    goto :check_langs
+    goto :download_russian
 )
 
-:: Скачивание установщика
-echo [1/4] Скачивание Tesseract...
+:: Download installer
+echo [1/5] Downloading Tesseract...
 set "TESSERACT_URL=https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe"
 set "INSTALLER=%TEMP%\tesseract-installer.exe"
 
 powershell -Command "Invoke-WebRequest -Uri '%TESSERACT_URL%' -OutFile '%INSTALLER%'"
 
 if not exist "%INSTALLER%" (
-    echo ❌ Ошибка скачивания!
-    echo Пожалуйста, скачайте вручную:
+    echo [ERROR] Download failed!
+    echo Please download manually:
     echo https://github.com/UB-Mannheim/tesseract/wiki
     pause
     exit /b 1
 )
 
-:: Запуск установщика
-echo [2/4] Запуск установщика...
-echo ⚠️ ВНИМАНИЕ: При установке выберите компонент "Language data"!
-echo    (нужен для русского языка)
+:: Run installer
+echo [2/5] Running installer...
+echo IMPORTANT: Select "Language data" component during installation!
+echo (Required for Russian language)
 echo.
-echo Нажмите любую клавишу для продолжения...
+echo Press any key to continue...
 pause >nul
 
 start /wait "" "%INSTALLER%"
 
-:: Добавление в PATH
-echo [3/4] Добавление в PATH...
+:: Add to PATH
+echo [3/5] Adding to PATH...
 setx PATH "%PATH%;C:\Program Files\Tesseract-OCR" /M >nul 2>&1
 
-:: Очистка
-echo [4/4] Очистка временных файлов...
+:: Cleanup
+echo [4/5] Cleaning up...
 del "%INSTALLER%" 2>nul
 
-:check_langs
-:: Проверка языков
+:download_russian
+:: Download Russian language
+echo [5/5] Downloading Russian language...
+set "RUSSIAN_URL=https://github.com/tesseract-ocr/tessdata/raw/main/rus.traineddata"
+set "TESSDATA_DIR=C:\Program Files\Tesseract-OCR\tessdata"
+
+if not exist "%TESSDATA_DIR%" (
+    mkdir "%TESSDATA_DIR%"
+)
+
+echo Downloading rus.traineddata...
+powershell -Command "Invoke-WebRequest -Uri '%RUSSIAN_URL%' -OutFile '%TESSDATA_DIR%\rus.traineddata'"
+
+if exist "%TESSDATA_DIR%\rus.traineddata" (
+    echo [OK] Russian language downloaded successfully!
+) else (
+    echo [ERROR] Failed to download Russian language!
+    echo Download manually:
+    echo https://github.com/tesseract-ocr/tessdata/blob/main/rus.traineddata
+    echo Copy to: %TESSDATA_DIR%
+)
+
+:: Check installed languages
 echo.
-echo Проверка установленных языков...
+echo Installed languages:
 tesseract --list-langs
 
 echo.
-echo ✅ Установка завершена!
-echo.
-echo Если русский язык (rus) отсутствует в списке,
-echo скачайте файл вручную:
-echo https://github.com/tesseract-ocr/tessdata/blob/main/rus.traineddata
-echo и поместите в C:\Program Files\Tesseract-OCR\tessdata\
-echo.
+echo [OK] Setup complete!
 pause
