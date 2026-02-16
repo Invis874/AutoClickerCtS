@@ -1,0 +1,45 @@
+# Конфигурация AutoClickerCtS
+
+# Горячие клавиши
+hotkeys:
+  start_stop: "F2"
+  pause: "F3"
+  exit: "F4"
+  calibrate: "F1"
+
+# Настройки кликера
+click_interval: 0.02  # секунд между кликами
+click_variance: 5    # разброс в пикселях
+consecutive_pause: 50 # кликов до паузы
+consecutive_pause_duration: 0.1
+
+# Проверки
+upgrade_check_interval: 30  # секунд между проверками улучшений
+popup_check_interval: 5   # секунд между проверками всплывающих окон
+
+# Области экрана (будут перезаписаны после калибровки)
+main_click_area:
+  x: 500
+  y: 300
+
+# Настройки улучшений
+upgrades:
+  panel_open_button: [36, 428]  # координаты кнопки открытия панели
+  generator_tab: [140, 45]      # координаты вкладки Генератор
+  research_tab: [223, 45]       # координаты вкладки Исследование
+  buy_mode_button: [465, 142]    # кнопка выбора режима покупки
+  list_region: [10, 179, 546, 893]  # область со списком улучшений
+  buy_button_color: [34,76,62]  # RGB зеленого цвета кнопки
+  color_threshold: 50            # порог определения цвета
+
+# Настройки OCR
+tesseract:
+  path: null  # путь к tesseract.exe (если не в PATH)
+  languages: "rus+eng"
+  config: "--oem 3 --psm 6"
+
+# Логирование
+logging:
+  file: "logs/autoclicker.log"
+  level: "INFO"
+  console: true
