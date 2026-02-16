@@ -1,0 +1,2 @@
+# AutoClickerCtS
+Кликер для CtS
