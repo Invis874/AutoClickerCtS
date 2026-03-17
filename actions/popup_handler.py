@@ -15,7 +15,7 @@ class PopupHandler:
         self.text_region = (690, 700, 1200, 840)
         
         # Координаты клика по кнопке (центр)
-        self.click_coords = (961, 733)  # центр кнопки
+        self.click_coords = (961, 753)  # центр кнопки
         
     def check_popups(self):
         """Проверяем наличие текста 'Пропустить' в области"""

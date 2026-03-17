@@ -128,12 +128,12 @@ class UpgradesManager:
             print("="*70)
             
             # Параметры блока
-            BLOCK_HEIGHT = 99
-            AVATAR_WIDTH = 91
-            TEXT_X_OFFSET = 102
-            TEXT_WIDTH = 266
-            BUTTON_WIDTH = 182
-            BUTTON_HEIGHT = 69
+            BLOCK_HEIGHT = 99    # Высота блока
+            AVATAR_WIDTH = 91    # Ширина аватарки в блоке
+            TEXT_X_OFFSET = 102  # Координата с которой начинается текст
+            TEXT_WIDTH = 266     # Ширина а которой лежит текст
+            BUTTON_WIDTH = 182   # Ширина кнопки 
+            BUTTON_HEIGHT = 69   # Высота кнопки
             
             upgrades = []
             

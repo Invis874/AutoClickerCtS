@@ -1,12 +1,5 @@
 # Конфигурация AutoClickerCtS
 
-# Горячие клавиши
-hotkeys:
-  start_stop: "F2"
-  pause: "F3"
-  exit: "F4"
-  calibrate: "F1"
-
 # Настройки кликера
 click_interval: 0.02  # секунд между кликами
 click_variance: 5    # разброс в пикселях
@@ -14,8 +7,8 @@ consecutive_pause: 50 # кликов до паузы
 consecutive_pause_duration: 0.1
 
 # Проверки
-upgrade_check_interval: 30  # секунд между проверками улучшений
-popup_check_interval: 5   # секунд между проверками всплывающих окон
+upgrade_check_interval: 120  # секунд между проверками улучшений
+popup_check_interval: 10   # секунд между проверками всплывающих окон
 
 # Области экрана (будут перезаписаны после калибровки)
 main_click_area:
@@ -31,6 +24,43 @@ upgrades:
   list_region: [10, 179, 546, 893]  # область со списком улучшений
   buy_button_color: [34,76,62]  # RGB зеленого цвета кнопки
   color_threshold: 50            # порог определения цвета
+
+# Астрономические миссии
+astronomy:
+  first_block_y: 277     # Y координата первого блока
+  block_height: 143      # высота одного блока
+  block_count: 5         # количество блоков
+  button_x: 330          # X координата кнопки сбора
+  
+  mission_selection:
+    first_y: 386         # Y первой миссии в списке
+    item_height: 127      # высота одной строки
+    item_count: 3        # сколько миссий показывается
+    
+    type_buttons:
+      "Темная материя": [955, 350]
+      "Карлик(звезда)": [780, 350]
+      "Созвездие": [1060, 350]
+      "Скидка": [1140, 350]
+
+# Настройки миссий
+missions:
+  available:
+    - type: "Темная материя"
+      name: "Темная материя 1"
+      priority: 1
+    - type: "Карлик(звезда)"
+      name: "Карлик 1"
+      priority: 2
+    - type: "Созвездие"
+      name: "Созвездие Ориона"
+      priority: 3
+    - type: "Скидка"
+      name: "Скидка на улучшения"
+      priority: 4
+    - type: "Пятый тип"
+      name: "Пятая миссия"
+      priority: 5
 
 # Настройки OCR
 tesseract:

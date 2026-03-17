@@ -10,8 +10,11 @@ from typing import Optional, Dict
 from actions.clicker import Clicker
 from actions.popup_handler import PopupHandler
 from actions.upgrades_manager import UpgradesManager
+from actions.astronomy_missions import AstronomyMissions
 from utils.config_loader import Config
 from utils.logger import get_logger
+from utils.image_processor import ImageProcessor
+from utils.text_recognizer import TextRecognizer
 
 class AutoClicker:
     # Режимы работы
@@ -24,11 +27,14 @@ class AutoClicker:
     def __init__(self, config_path: str = "resources/config/settings.yaml"):
         self.logger = get_logger(__name__)
         self.config = Config(config_path)
+        self.image_processor = ImageProcessor()
+        self.text_recognizer = TextRecognizer()
         
         # Компоненты системы
         self.clicker = Clicker(config=self.config)
         self.popup_handler = PopupHandler()
         self.upgrades_manager = UpgradesManager(config=self.config)
+        self.astronomy_missions = AstronomyMissions(self.config)
         
         # Состояние системы
         self.is_running = False
@@ -38,6 +44,7 @@ class AutoClicker:
         
         # Настройки из конфига
         self.main_click_area = self.config.get('main_click_area')
+        self.navigation_menu = self.config.get('navigation_menu')
         self.click_interval = self.config.get('click_interval', 0.1)
         self.popup_check_interval = self.config.get('popup_check_interval', 5)
         self.upgrade_check_interval = self.config.get('upgrade_check_interval', 30)
@@ -46,6 +53,117 @@ class AutoClicker:
         self._setup_hotkeys()
         
         self.logger.info("Автокликер инициализирован")
+
+    def _navigate_to_location(self, target_text, click_coords=(1868, 145), wait_for_popup=True):
+        """
+        Универсальная функция перехода в любую локацию
+        
+        Args:
+            click_coords: (x, y) куда кликнуть для открытия
+            target_text: текст который ищем (например "ЗА ПРЕДЕЛАМИ")
+            wait_for_popup: ждать ли появление окна "Собрать"
+        """
+        print(f"\n🧭 НАВИГАЦИЯ: ищем '{target_text}'")
+        
+        try:
+            # 1. Кликаем по входу
+            pyautogui.click(*click_coords)
+            print(f"   🖱️ Клик по {click_coords}")
+            time.sleep(0.5)
+            
+            # 2. Ищем кнопку с нужным текстом
+            button_pos = self._find_button_with_text(target_text)
+            
+            if not button_pos:
+                print(f"   ❌ Кнопка '{target_text}' не найдена")
+                return False
+                
+            print(f"   ✅ Найдена кнопка '{target_text}'")
+            pyautogui.click(*button_pos)
+            print(f"   🖱️ Клик по кнопке")
+            
+            # 3. Если нужно ждать окно "Собрать"
+            if wait_for_popup:
+                print("   ⏳ Ожидание загрузки...")
+                
+                # Ждем появления окна и закрываем его
+                popup_closed = self._wait_for_popup_and_close(timeout=30)
+                
+                if popup_closed:
+                    print("   ✅ Загрузка завершена, окно закрыто")
+                    return True
+                else:
+                    print("   ⚠️ Таймаут ожидания окна")
+                    return False
+            
+            return True
+                    
+        except Exception as e:
+            self.logger.error(f"Ошибка навигации: {e}")
+            return False
+
+    def _wait_for_popup_and_close(self, timeout=30):
+        """
+        Ждет появления окна "Собрать" и закрывает его
+        Возвращает True если окно появилось и было закрыто
+        """
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            # Проверяем всплывающие окна
+            has_popup, popup_type = self.popup_handler.check_popups()
+            
+            if has_popup:
+                print(f"   🚫 Обнаружено окно: {popup_type}")
+                self.popup_handler.handle_popup(popup_type)
+                return True
+                
+            time.sleep(0.5)
+        
+        print(f"   ⚠️ Окно не появилось за {timeout} секунд")
+        return False
+
+    def _find_button_with_text(self, target_text):
+        """
+        Ищет кнопку с заданным текстом в сплывающем окне
+        Возвращает координаты центра или None
+        """
+         # Параметры из конфига
+        first_y = 287          # Y координата первой кнопки
+        button_height = 124    # высота одной кнопки
+        button_count = 3       # количество кнопок
+        button_x = 958         # X координата центра кнопки
+        
+        print(f"\n🔍 Ищем кнопку '{target_text}'...")
+        
+        # Проходим по всем кнопкам по порядку
+        for i in range(button_count):
+            # Y координата текущей кнопки
+            current_y = first_y + (i * button_height + 12)
+            
+            # Область текста на кнопке
+            text_region = (
+                button_x - 250,       # координата начала области текста в кнопке
+                current_y + 28,       # кордината Y
+                503,                  # ширина области
+                75                    # высота облости
+            )
+            
+            # Скриншот и распознавание
+            screenshot = self.image_processor.capture_screen(region=text_region)
+            text = self.text_recognizer.extract_text(screenshot)
+            
+            print(f"   Кнопка {i+1}: '{text.strip()}'")
+            
+            # Если нашли нужный текст
+            if target_text in text:
+                # Центр кнопки
+                button_y = current_y + button_height // 2
+                print(f"   ✅ Нашли! Кнопка {i+1} в ({button_x}, {button_y})")
+                return (button_x, button_y)
+        
+        print(f"   ❌ Кнопка '{target_text}' не найдена")
+        return None
         
     def _setup_hotkeys(self):
         """Настройка горячих клавиш"""
@@ -83,6 +201,7 @@ class AutoClicker:
         """Основной рабочий цикл - выбор режима"""
         last_popup_check = time.time()
         last_upgrade_check = time.time()
+        last_missions_check = time.time()
 
         while self.is_running:
             try:
@@ -95,17 +214,19 @@ class AutoClicker:
                 # Выбираем поведение в зависимости от режима
                 if self.current_mode == self.MODE_FREE:
                     self._free_click_loop()
-                elif self.current_mode == self.MODE_SMART:
-                    # Умный режим - передаем и получаем обновленные таймеры
-                    last_popup_check, last_upgrade_check = self._smart_click_step(
-                        current_time, last_popup_check, last_upgrade_check
-                    )
                 elif self.current_mode == self.MODE_LOCATION1:
                     self._location1_loop()
                 elif self.current_mode == self.MODE_DINO:
                     self._dino_loop()
                 elif self.current_mode == self.MODE_COSMOS:
-                    self._cosmos_loop()
+                    last_popup_check, last_missions_check = self._cosmos_loop(
+                        current_time, last_popup_check, last_missions_check
+                    )
+                elif self.current_mode == self.MODE_SMART:
+                    # Умный режим - передаем и получаем обновленные таймеры
+                    last_popup_check, last_upgrade_check, last_missions_check = self._smart_click_step(
+                        current_time, last_popup_check, last_upgrade_check, last_missions_check
+                    )
                     
             except Exception as e:
                 self.logger.error(f"Ошибка в основном цикле: {e}")
@@ -136,19 +257,38 @@ class AutoClicker:
             self.is_paused = True
             print("⏸️ Пауза")
         
-    def _cosmos_loop(self):
+    def _cosmos_loop(self, current_time, last_popup, last_cosmos):
         """
-        Режим F3 - КОСМОС (заглушка)
-        TODO: добавить логику позже
+        Режим F3 - КОСМОС (только клики и миссии, без улучшений)
         """
-        print("🔧 Режим 'Космос' пока не реализован")
-        print("⏸️  Автоматическая пауза")
-        
-        if not self.is_paused:
-            self.is_paused = True
-            print("⏸️ Пауза")
+        try:
+            # 1. Проверка всплывающих окон
+            if current_time - last_popup > self.popup_check_interval:
+                last_popup = current_time
+                has_popup, popup_type = self.popup_handler.check_popups()
+            
+                if has_popup:
+                    self.popup_handler.handle_popup(popup_type)
+                    return last_popup, last_cosmos
 
-    def _smart_click_step(self, current_time, last_popup, last_upgrade):
+            # 2. КАЖДЫЕ 15 МИНУТ - ПЕРЕХОД В КОСМОС
+            if current_time - last_cosmos > 1 * 60:
+                # Запускаем астрономические миссии
+                self.astronomy_missions.run_missions()
+                
+                # Обновляем время последнего перехода
+                last_cosmos = current_time
+                    
+            # 3. Основной клик
+            self.clicker.click()
+
+        except Exception as e:
+            self.logger.error(f"Ошибка в основном цикле: {e}")
+            time.sleep(1)
+
+        return last_popup, last_cosmos
+
+    def _smart_click_step(self, current_time, last_popup, last_upgrade, last_cosmos):
         """
         Режим F4 - УМНЫЙ КЛИК (с окнами и улучшениями)
         То что мы уже сделали
@@ -162,9 +302,26 @@ class AutoClicker:
             
                 if has_popup:
                     self.popup_handler.handle_popup(popup_type)
-                    return last_popup, last_upgrade
+                    return last_popup, last_upgrade, last_cosmos
+
+            # 2. КАЖДЫЕ 15 МИНУТ - ПЕРЕХОД В КОСМОС
+            if current_time - last_cosmos > 1 * 60:
+                print("\n⏰ 15 МИНУТ - ПЕРЕХОД В КОСМОС")
                 
-            # 2. Периодическая проверка улучшений
+                # Переходим в "ЗА ПРЕДЕЛАМИ"
+                success = self._navigate_to_location(
+                    click_coords=(1868, 145),  # координаты меню перехода
+                    target_text="ЗА ПРЕДЕЛАМИ"
+                )
+                
+                if success:
+                    # Запускаем астрономические миссии
+                    self.astronomy_missions.run_missions()
+                
+                # Обновляем время последнего перехода
+                last_cosmos = current_time
+                
+            # 3. Периодическая проверка улучшений
             if current_time - last_upgrade > self.upgrade_check_interval:
                 last_upgrade = current_time
                 upgrade_start = time.time()
@@ -173,28 +330,21 @@ class AutoClicker:
                 print(f"⏱️  Проверка улучшений: {upgrade_time:.3f} сек")
 
                 
-            # 3. Основной клик
+            # 4. Основной клик
             self.clicker.click()
-
-            # 4. Интервал между кликами
-            interval_start = time.time()
-            time.sleep(self.click_interval)
-            interval_time = time.time() - interval_start
             
             # Общее время цикла
             loop_time = time.time() - loop_start
             
             # Выводим статистику каждые 100 циклов
             if int(time.time()) % 10 == 0:  # каждые 10 секунд
-                print(f"📊 Цикл: {loop_time:.3f} сек | " 
-                      f"Интервал: {interval_time:.3f} сек | "
-                      f"Настройка: {self.click_interval} сек")
+                print(f"📊 Цикл: {loop_time:.3f} сек")
 
         except Exception as e:
             self.logger.error(f"Ошибка в основном цикле: {e}")
             time.sleep(1)
 
-        return last_popup, last_upgrade
+        return last_popup, last_upgrade, last_cosmos
 
     def _free_click_loop(self):
         """
