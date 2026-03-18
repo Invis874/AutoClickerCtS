@@ -5,6 +5,7 @@
 import time
 import pyautogui
 from typing import List, Dict, Optional, Tuple
+from actions.popup_handler import PopupHandler
 from utils.logger import get_logger
 from utils.image_processor import ImageProcessor
 from utils.text_recognizer import TextRecognizer
@@ -15,6 +16,8 @@ class AstronomyMissions:
         self.config = config
         self.image_processor = ImageProcessor()
         self.text_recognizer = TextRecognizer()
+
+        self.popup_handler = PopupHandler()
 
         self.panel_open_button = config.get('upgrades.panel_open_button', (36, 428)) # Кординаты открытия понели
         
@@ -135,14 +138,16 @@ class AstronomyMissions:
                 current_y = self.first_block_y + (i * (self.block_height + 14))
                 print(f"\n   БЛОК {i+1} (Y={current_y})")
                 
-                if self._is_mission_ready(current_y):
-                    self._collect_mission(i, current_y)
+                is_ready, mission_type = self._is_mission_ready(current_y)
+            
+                if is_ready:
+                    self._collect_mission(i, current_y, mission_type)
                 elif self._find_mission_available(current_y):
                     self._start_new_mission(i, current_y)
                 else:
                     print(f"      ⏳ Не готова")
                     
-                self.close_panel()
+            self.close_panel()
             
         except Exception as e:
             self.logger.error(f"Ошибка в астрономических миссиях: {e}")
@@ -159,28 +164,48 @@ class AstronomyMissions:
             is_green = g > r + 30 and g > b + 30
             
             if is_green:
-                print(f"      🟢 Готова к сбору! RGB({r},{g},{b})")
+                # Получаем текст блока чтобы узнать тип миссии
+                text_region = (self.button_x, block_y + 15, 160, 33)
+                screenshot = self.image_processor.capture_screen(region=text_region)
+                block_text = self.text_recognizer.extract_text(screenshot)
+                
+                mission_type = "обычная"
+                if "карлик" in block_text.lower():
+                    mission_type = "карлик"
+
+                print(f"      🟢 Готова к сбору! Тип: {mission_type} RGB({r},{g},{b})")
             else:
                 print(f"      🔴 RGB({r},{g},{b})")
                 
-            return is_green
+            return is_green, mission_type
             
         except Exception as e:
             print(f"      ⚠️ Ошибка проверки цвета: {e}")
             return False
     
-    def _collect_mission(self, block_num, block_y):
+    def _collect_mission(self, block_num, block_y, mission_type="обычная"):
         """
         Собирает готовую миссию
         """
         try:
             button_y = block_y + self.block_height // 2
+
             pyautogui.click(self.button_x, button_y)
             print(f"      🖱️ Сбор миссии")
             time.sleep(1)
-            
-            # Запускаем новую миссию
-            self._start_new_mission(block_num, block_y)
+
+            if mission_type == "карлик":
+                print(f"      🌟 Сбор карлика (специальная обработка)")
+
+                if self.popup_handler.click_until_text_appears(self.popup_handler.actions['center'], 0.5,
+                                                               self.popup_handler.regions["reward_window"],
+                                                               ["Итоговая награда", "Итоговая", "награда"]):
+                    pyautogui.click(self.button_x, button_y)
+                    self._start_new_mission(block_num, block_y)
+            else:
+                
+                # Запускаем новую миссию
+                self._start_new_mission(block_num, block_y)
             
         except Exception as e:
             print(f"      ⚠️ Ошибка сбора: {e}")
@@ -215,8 +240,6 @@ class AstronomyMissions:
             search_region = (self.button_x - 255, block_y + 40, 400, self.block_height - 70)
             screenshot = self.image_processor.capture_screen(region=search_region)
             text = self.text_recognizer.extract_text(screenshot)
-
-            print(text)
             
             if "МИССИЯ ДОСТУПНА" in text:
                 # Возвращаем центр блока

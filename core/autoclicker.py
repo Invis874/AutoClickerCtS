@@ -69,7 +69,7 @@ class AutoClicker:
             # 1. Кликаем по входу
             pyautogui.click(*click_coords)
             print(f"   🖱️ Клик по {click_coords}")
-            time.sleep(0.5)
+            time.sleep(1)
             
             # 2. Ищем кнопку с нужным текстом
             button_pos = self._find_button_with_text(target_text)
@@ -94,7 +94,6 @@ class AutoClicker:
                     return True
                 else:
                     print("   ⚠️ Таймаут ожидания окна")
-                    return False
             
             return True
                     
@@ -111,12 +110,9 @@ class AutoClicker:
         
         while time.time() - start_time < timeout:
             # Проверяем всплывающие окна
-            has_popup, popup_type = self.popup_handler.check_popups()
-            
-            if has_popup:
-                print(f"   🚫 Обнаружено окно: {popup_type}")
-                self.popup_handler.handle_popup(popup_type)
-                return True
+            if self.popup_handler.wait_and_click(self.popup_handler.regions['skip_button'], ['собрать'],
+                                                                          self.popup_handler.actions['skip'], timeout=1):
+                    return True
                 
             time.sleep(0.5)
         
@@ -265,10 +261,8 @@ class AutoClicker:
             # 1. Проверка всплывающих окон
             if current_time - last_popup > self.popup_check_interval:
                 last_popup = current_time
-                has_popup, popup_type = self.popup_handler.check_popups()
-            
-                if has_popup:
-                    self.popup_handler.handle_popup(popup_type)
+                if self.popup_handler.wait_and_click(self.popup_handler.regions['skip_button'], ['пропустить','собрать'],
+                                                                          self.popup_handler.actions['skip'], timeout=1):
                     return last_popup, last_cosmos
 
             # 2. КАЖДЫЕ 15 МИНУТ - ПЕРЕХОД В КОСМОС
@@ -298,10 +292,8 @@ class AutoClicker:
             # 1. Проверка всплывающих окон
             if current_time - last_popup > self.popup_check_interval:
                 last_popup = current_time
-                has_popup, popup_type = self.popup_handler.check_popups()
-            
-                if has_popup:
-                    self.popup_handler.handle_popup(popup_type)
+                if self.popup_handler.wait_and_click(self.popup_handler.regions['skip_button'], ['пропустить','собрать'],
+                                                                          self.popup_handler.actions['skip'], timeout=1):
                     return last_popup, last_upgrade, last_cosmos
 
             # 2. КАЖДЫЕ 15 МИНУТ - ПЕРЕХОД В КОСМОС
@@ -317,6 +309,12 @@ class AutoClicker:
                 if success:
                     # Запускаем астрономические миссии
                     self.astronomy_missions.run_missions()
+
+                    # Переходим в "ИССЛЕДОВАНИЕ"
+                    success = self._navigate_to_location(
+                        click_coords=(1868, 145),  # координаты меню перехода
+                        target_text="ИССЛЕДОВАНИЕ"
+                    )
                 
                 # Обновляем время последнего перехода
                 last_cosmos = current_time
